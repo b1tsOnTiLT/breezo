@@ -9,6 +9,7 @@ import requests
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from chatbot import get_response
+import html
 
 
 LAT_MIN = 28.20  # South: Covers Manesar & Southern Gurgaon
@@ -141,6 +142,12 @@ def get_dominant_pollutant(pm25_avg, pm10_avg):
     else:
         return "PM2.5 & PM10"
 
+def escape_html(text):
+    """Escape HTML special characters to prevent raw HTML rendering"""
+    if text is None:
+        return ""
+    return html.escape(str(text))
+
 
 
 
@@ -171,27 +178,6 @@ st.markdown("""
         }
         
         /* Rounded boxes for chatbot */
-        .chat-output-box {
-            background-color: #ffffff;
-            border-radius: 15px;
-            padding: 20px;
-            min-height: 150px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            color: #1a237e;
-        }
-        
-        .chat-output-box * {
-            color: #1a237e;
-        }
-        
-        .chat-input-box {
-            background-color: #ffffff;
-            border-radius: 15px;
-            padding: 15px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        
         .chat-main-container {
             background-color: #FFFFFF;
             border-radius: 12px;
@@ -536,9 +522,10 @@ if st.session_state.chatbot_loading and st.session_state.chatbot_input:
     if st.session_state.rendered_qa_count > 0:
         complete_html += '<div class="qa-divider"></div>'
     
+    escaped_input = escape_html(st.session_state.chatbot_input)
     complete_html += f'''
     <div class="qa-pair">
-        <div class="chat-question">You: {st.session_state.chatbot_input}</div>
+        <div class="chat-question">You: {escaped_input}</div>
         <div class="chat-answer" id="streaming-answer">Bot: ⚡ Processing...</div>
     </div>
     '''
@@ -553,7 +540,8 @@ conversation_placeholder.markdown(complete_html, unsafe_allow_html=True)
 
 # Display error messages separately if any
 if st.session_state.chatbot_error:
-    st.markdown(f'<div class="chat-answer-box" style="border-left: 4px solid #d32f2f; color: #d32f2f; margin-top: 10px;"><strong>⚠️ {st.session_state.chatbot_error}</strong></div>', unsafe_allow_html=True)
+    escaped_error = escape_html(st.session_state.chatbot_error)
+    st.markdown(f'<div class="chat-answer-box" style="border-left: 4px solid #d32f2f; color: #d32f2f; margin-top: 10px;"><strong>⚠️ {escaped_error}</strong></div>', unsafe_allow_html=True)
 
 # Input box (always at bottom)
 with st.form("chatbot_form", clear_on_submit=True):
@@ -594,12 +582,23 @@ if st.session_state.chatbot_loading and st.session_state.location_info and st.se
     
     # Get full response with conversation history
     # get_response expects conversation_history as list of {"role": str, "content": str} dicts
-    response = get_response(
+    
+    response, error = get_response(
         st.session_state.chatbot_input, 
         st.session_state.aqi_live_data, 
         st.session_state.location_info['address'],
         conversation_history=history_for_api
     )
+    if error:
+        st.session_state.chatbot_error = error
+        st.session_state.chatbot_loading = False
+        st.session_state.chatbot_input = ""
+        st.rerun()
+    if not response or not isinstance(response, str):
+        st.session_state.chatbot_error = "Invalid response from chatbot"
+        st.session_state.chatbot_loading = False
+        st.session_state.chatbot_input = ""
+        st.rerun()
     
     # Stream response letter by letter - update the single container
     streamed_text = ""
@@ -622,10 +621,12 @@ if st.session_state.chatbot_loading and st.session_state.location_info and st.se
             complete_html += '<div class="qa-divider"></div>'
         
         # Add current streaming Q&A pair
+        escaped_question = escape_html(current_question)
+        escaped_streamed = escape_html(processed_streamed)
         complete_html += f'''
         <div class="qa-pair">
-            <div class="chat-question">You: {current_question}</div>
-            <div class="chat-answer">Bot: {processed_streamed}</div>
+            <div class="chat-question">You: {escaped_question}</div>
+            <div class="chat-answer">Bot: {escaped_streamed}</div>
         </div>
         '''
         complete_html += '</div>'
@@ -642,11 +643,13 @@ if st.session_state.chatbot_loading and st.session_state.location_info and st.se
     divider_html = '<div class="qa-divider"></div>' if st.session_state.rendered_qa_count > 0 else ''
     
     # Add the completed Q&A pair to rendered HTML
+    escaped_question_final = escape_html(current_question)
+    escaped_response_final = escape_html(processed_response)
     new_qa_html = f'''
     {divider_html}
     <div class="qa-pair">
-        <div class="chat-question">You: {current_question}</div>
-        <div class="chat-answer">Bot: {processed_response}</div>
+        <div class="chat-question">You: {escaped_question_final}</div>
+        <div class="chat-answer">Bot: {escaped_response_final}</div>
     </div>
     '''
     st.session_state.rendered_qa_html += new_qa_html
@@ -673,11 +676,13 @@ if st.session_state.chatbot_loading and st.session_state.location_info and st.se
             for i in range(0, len(st.session_state.conversation_history), 2):
                 if i + 1 < len(st.session_state.conversation_history):
                     divider = '<div class="qa-divider"></div>' if i > 0 else ''
+                    escaped_user_msg = escape_html(st.session_state.conversation_history[i]["content"])
+                    escaped_bot_msg = escape_html(st.session_state.conversation_history[i+1]["content"])
                     st.session_state.rendered_qa_html += f'''
                     {divider}
                     <div class="qa-pair">
-                        <div class="chat-question">You: {st.session_state.conversation_history[i]["content"]}</div>
-                        <div class="chat-answer">Bot: {st.session_state.conversation_history[i+1]["content"]}</div>
+                        <div class="chat-question">You: {escaped_user_msg}</div>
+                        <div class="chat-answer">Bot: {escaped_bot_msg}</div>
                     </div>
                     '''
                     st.session_state.rendered_qa_count += 1

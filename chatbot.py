@@ -14,59 +14,78 @@ OPEN_AI_API = st.secrets["open_ai"]["api_key"]
 client=OpenAI(api_key=OPEN_AI_API)
 
 def get_response(message, aqi_live_dic, location, conversation_history=None):
-    
-    windows=create_windows(aqi_live_dic)
-    payload=build_aqi_runtime_payload(windows,location)
-    system_prompt=SYSTEM_PROMPT
-    context_prompt=CONTEXT_PROMPT
+    try:
+        # Validate inputs
+        if not message or not isinstance(message, str):
+            return None, "Invalid message input"
+        if not aqi_live_dic or not isinstance(aqi_live_dic, dict):
+            return None, "Invalid AQI data"
+        if not location or not isinstance(location, str):
+            return None, "Invalid location"
+        
+        windows=create_windows(aqi_live_dic)
+        payload=build_aqi_runtime_payload(windows,location)
+        system_prompt=SYSTEM_PROMPT
+        context_prompt=CONTEXT_PROMPT
 
-    runtime_prompt=f"""
-    <Runtime payload>
-    {payload}
-    </Runtime payload>
-    """
+        runtime_prompt=f"""
+        <Runtime payload>
+        {payload}
+        </Runtime payload>
+        """
 
-    # Build input array with system prompts and conversation history
-    input_array = [
-        {
-            "role": "developer",
-            "content": system_prompt
-        },
-        {
+        # Build input array with system prompts and conversation history
+        input_array = [
+            {
+                "role": "developer",
+                "content": system_prompt
+            },
+            {
+                "role": "assistant",
+                "content": context_prompt
+            }
+        ]
+        
+        # Add conversation history if provided
+        # Best practice: Include history BEFORE runtime payload so model has context
+        if conversation_history:
+            # Add a brief context marker if history exists (helps model understand it's historical)
+            if not isinstance(conversation_history, list):
+                return None, "Conversation history must be a list"
+            for msg in conversation_history:
+                if not isinstance(msg, dict) or "role" not in msg or "content" not in msg:
+                    return None, "Invalid conversation history format"
+                input_array.append({
+                    "role": msg["role"],
+                    "content": msg["content"]
+                })
+        
+        # Add runtime payload (current AQI data) - this comes after history
+        input_array.append({
             "role": "assistant",
-            "content": context_prompt
-        }
-    ]
-    
-    # Add conversation history if provided
-    # Best practice: Include history BEFORE runtime payload so model has context
-    if conversation_history:
-        # Add a brief context marker if history exists (helps model understand it's historical)
-        for msg in conversation_history:
-            input_array.append({
-                "role": msg["role"],
-                "content": msg["content"]
-            })
-    
-    # Add runtime payload (current AQI data) - this comes after history
-    input_array.append({
-        "role": "assistant",
-        "content": runtime_prompt
-    })
-    
-    # Add current user message (most recent, highest priority)
-    input_array.append({
-        "role": "user",
-        "content": message
-    })
+            "content": runtime_prompt
+        })
+        
+        # Add current user message (most recent, highest priority)
+        input_array.append({
+            "role": "user",
+            "content": message
+        })
 
-    response=client.responses.create(
-        model="gpt-4o-mini",
-        temperature=0.3,
-        max_output_tokens=400,
-        input=input_array
-    )
-    return response.output_text
+        response=client.responses.create(
+            model="gpt-4o-mini",
+            temperature=0.3,
+            max_output_tokens=400,
+            input=input_array
+        )
+        
+        if not hasattr(response, 'output_text') or not response.output_text:
+            return None, "Empty or invalid response from API"
+        
+        
+        return response.output_text, None
+    except Exception as e:
+        return None, f"Chatbot error: {str(e)}"
 
 
 
