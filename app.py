@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from chatbot import get_response
 import html
+import pytz
 
 
 LAT_MIN = 28.20  # South: Covers Manesar & Southern Gurgaon
@@ -147,6 +148,11 @@ def escape_html(text):
     if text is None:
         return ""
     return html.escape(str(text))
+
+def get_indian_time():
+    """Get current time in Indian Standard Time (IST)"""
+    ist = pytz.timezone('Asia/Kolkata')
+    return datetime.now(ist)
 
 
 
@@ -307,7 +313,7 @@ with st.form("address_form", clear_on_submit=False):
         key="address_input",
         label_visibility="collapsed"
     )
-    submitted = st.form_submit_button("Submit", use_container_width=False, type="primary")
+    submitted = st.form_submit_button("Submit", width='content', type="primary")
     
     # Only process if form is submitted AND address is different from last one
     if submitted and address and address != st.session_state.last_address:
@@ -322,6 +328,11 @@ with st.form("address_form", clear_on_submit=False):
             st.session_state.last_address = address
             st.session_state.data_loaded = False
             st.session_state.last_location_request_time = time.time()  # Update request time
+            # Clear chatbot conversation when new address is entered (location-specific)
+            st.session_state.conversation_history = []
+            st.session_state.rendered_qa_html = ""
+            st.session_state.rendered_qa_count = 0
+            st.session_state.chatbot_error = None
             
             # Geocoding spinner
             with st.spinner("Locating address..."):
@@ -379,7 +390,7 @@ if st.session_state.aqi_data and st.session_state.predictions_data:
     
     # Create time labels (t to t+8)
     time_labels = []
-    base_time=pd.to_datetime(datetime.now()).floor('h')
+    base_time=pd.to_datetime(get_indian_time()).floor('h')
     for i in range(9):
         time_labels.append(base_time + pd.Timedelta(hours=i))
     
@@ -491,7 +502,7 @@ if st.session_state.aqi_data and st.session_state.predictions_data:
             margin=dict(l=60, r=120, t=60, b=60)
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 # Initialize chatbot response in session state
 if 'chatbot_response' not in st.session_state:
@@ -523,12 +534,7 @@ if st.session_state.chatbot_loading and st.session_state.chatbot_input:
         complete_html += '<div class="qa-divider"></div>'
     
     escaped_input = escape_html(st.session_state.chatbot_input)
-    complete_html += f'''
-    <div class="qa-pair">
-        <div class="chat-question">You: {escaped_input}</div>
-        <div class="chat-answer" id="streaming-answer">Bot: ⚡ Processing...</div>
-    </div>
-    '''
+    complete_html += f'<div class="qa-pair"><div class="chat-question">You: {escaped_input}</div><div class="chat-answer" id="streaming-answer">Bot: ⚡ Processing...</div></div>'
 elif not st.session_state.rendered_qa_html and not st.session_state.chatbot_error:
     # Show placeholder if no conversation yet
     complete_html += '<p style="color: #757575; font-style: italic; text-align: center;">Your conversation will appear here...</p>'
@@ -552,7 +558,7 @@ with st.form("chatbot_form", clear_on_submit=True):
         max_chars=80,  
         label_visibility="collapsed"
     )
-    chat_submitted = st.form_submit_button("🤖 Send", use_container_width=True, type="primary")
+    chat_submitted = st.form_submit_button("🤖 Send", width='stretch', type="primary")
     
     if chat_submitted and chat_input:
         # Check chatbot rate limit
@@ -623,12 +629,7 @@ if st.session_state.chatbot_loading and st.session_state.location_info and st.se
         # Add current streaming Q&A pair
         escaped_question = escape_html(current_question)
         escaped_streamed = escape_html(processed_streamed)
-        complete_html += f'''
-        <div class="qa-pair">
-            <div class="chat-question">You: {escaped_question}</div>
-            <div class="chat-answer">Bot: {escaped_streamed}</div>
-        </div>
-        '''
+        complete_html += f'<div class="qa-pair"><div class="chat-question">You: {escaped_question}</div><div class="chat-answer">Bot: {escaped_streamed}</div></div>'
         complete_html += '</div>'
         
         # Update the single container
@@ -645,13 +646,7 @@ if st.session_state.chatbot_loading and st.session_state.location_info and st.se
     # Add the completed Q&A pair to rendered HTML
     escaped_question_final = escape_html(current_question)
     escaped_response_final = escape_html(processed_response)
-    new_qa_html = f'''
-    {divider_html}
-    <div class="qa-pair">
-        <div class="chat-question">You: {escaped_question_final}</div>
-        <div class="chat-answer">Bot: {escaped_response_final}</div>
-    </div>
-    '''
+    new_qa_html = f'{divider_html}<div class="qa-pair"><div class="chat-question">You: {escaped_question_final}</div><div class="chat-answer">Bot: {escaped_response_final}</div></div>'
     st.session_state.rendered_qa_html += new_qa_html
     st.session_state.rendered_qa_count += 1
     
@@ -678,13 +673,7 @@ if st.session_state.chatbot_loading and st.session_state.location_info and st.se
                     divider = '<div class="qa-divider"></div>' if i > 0 else ''
                     escaped_user_msg = escape_html(st.session_state.conversation_history[i]["content"])
                     escaped_bot_msg = escape_html(st.session_state.conversation_history[i+1]["content"])
-                    st.session_state.rendered_qa_html += f'''
-                    {divider}
-                    <div class="qa-pair">
-                        <div class="chat-question">You: {escaped_user_msg}</div>
-                        <div class="chat-answer">Bot: {escaped_bot_msg}</div>
-                    </div>
-                    '''
+                    st.session_state.rendered_qa_html += f'{divider}<div class="qa-pair"><div class="chat-question">You: {escaped_user_msg}</div><div class="chat-answer">Bot: {escaped_bot_msg}</div></div>'
                     st.session_state.rendered_qa_count += 1
     
     # Clear loading state
