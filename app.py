@@ -117,10 +117,19 @@ def AQI_builder(lat, lon):
 
 def check_location_rate_limit():
     """Check if location request can be made (1 request per 10 seconds)"""
+    now = time.time()
+    # Burst guard: max 2 attempts in any 15s window
+    st.session_state.location_request_times = [
+        t for t in st.session_state.location_request_times if now - t < 15
+    ]
+    if len(st.session_state.location_request_times) >= 2:
+        remaining = int(15 - (now - st.session_state.location_request_times[0])) + 1
+        return False, f"Too many location attempts. Please wait {remaining} seconds."
+    
     if st.session_state.last_location_request_time is None:
         return True, None
     
-    time_since_last = time.time() - st.session_state.last_location_request_time
+    time_since_last = now - st.session_state.last_location_request_time
     if time_since_last < 10:
         remaining = int(10 - time_since_last) + 1
         return False, f"Please wait {remaining} seconds before making another location request."
@@ -128,8 +137,15 @@ def check_location_rate_limit():
 
 def check_chatbot_rate_limit():
     """Check if chatbot can be used (5 chats per session)"""
+    now = time.time()
+    # Burst guard: limit to 3 chats per rolling 60s
+    st.session_state.chatbot_timestamps = [
+        t for t in st.session_state.chatbot_timestamps if now - t < 30
+    ]
+    if len(st.session_state.chatbot_timestamps) >= 3:
+        return False, "Too many chats in a minute. Please wait a few seconds."
     if st.session_state.chatbot_count >= 5:
-        return False, "Chat limit reached (5 chats per session). Please refresh the page to continue."
+        return False, "Chat limit reached (5 chats per session). Please Re-Enter Location."
     return True, None
 
 def get_dominant_pollutant(pm25_avg, pm10_avg):
@@ -298,6 +314,10 @@ if 'rendered_qa_html' not in st.session_state:
     st.session_state.rendered_qa_html = ""  # Accumulated HTML for all rendered Q&A pairs
 if 'rendered_qa_count' not in st.session_state:
     st.session_state.rendered_qa_count = 0  # Number of Q&A pairs fully rendered
+if 'location_request_times' not in st.session_state:
+    st.session_state.location_request_times = []  # Recent timestamps for location requests
+if 'chatbot_timestamps' not in st.session_state:
+    st.session_state.chatbot_timestamps = []  # Recent timestamps for chatbot submits
 
 # Address input section - using form for Enter key support
 st.markdown("### Where To?")
@@ -328,6 +348,8 @@ with st.form("address_form", clear_on_submit=False):
             st.session_state.rendered_qa_html = ""
             st.session_state.rendered_qa_count = 0
             st.session_state.chatbot_error = None
+            st.session_state.chatbot_count = 0  # Reset chat limit on new location
+            st.session_state.location_request_times.append(time.time())
             
             # Geocoding spinner
             with st.spinner("Locating address..."):
@@ -338,36 +360,38 @@ with st.form("address_form", clear_on_submit=False):
                 st.error(f"Error Encountered ! {error}")
                 st.session_state.data_loaded = False
             elif lat is not None and lon is not None:
+                # Hard bound check for NCR coordinates
                 if lat < LAT_MIN or lat > LAT_MAX or lon < LON_MIN or lon > LON_MAX:
                     st.error("Please try a location within the National Capital Region of Delhi !")
                     st.session_state.data_loaded = False
-                
-                st.success(f"Found! {lat:.4f}, {lon:.4f}")
-                st.session_state.location_info = {"lat": lat, "lon": lon, "address": location}
-                
-                # Only show AQI spinner if location info was successfully received
-                with st.spinner("Generating predictions (this may take a minute)..."):
-                    try:
-                        AQI_dic, AQI_live_dic, predictions_dic, error = AQI_builder(lat, lon)
-                        
-                        # Check for error from AQI_builder
-                        if error:
-                            st.error(f"Error Encountered ! {error}")
+                    st.session_state.location_info = None
+                else:
+                    st.success(f"Found! {lat:.4f}, {lon:.4f}")
+                    st.session_state.location_info = {"lat": lat, "lon": lon, "address": location}
+                    
+                    # Only show AQI spinner if location info was successfully received
+                    with st.spinner("Generating predictions (this may take a minute)..."):
+                        try:
+                            AQI_dic, AQI_live_dic, predictions_dic, error = AQI_builder(lat, lon)
+                            
+                            # Check for error from AQI_builder
+                            if error:
+                                st.error(f"Error Encountered ! {error}")
+                                st.session_state.data_loaded = False
+                            # Validate data before storing
+                            elif AQI_dic and AQI_live_dic and predictions_dic:
+                                st.session_state.aqi_data = AQI_dic
+                                st.session_state.aqi_live_data = AQI_live_dic
+                                st.session_state.predictions_data = predictions_dic
+                                st.session_state.data_loaded = True
+                                st.success("Forecast Ready!")
+                            else:
+                                st.error("Error Encountered ! Incomplete data, please try again.")
+                                st.session_state.data_loaded = False
+                        except Exception as e:
+                            st.error(f"Error Encountered ! {str(e)}")
+                            st.info("💡 Please try again or check if the location has available air quality data.")
                             st.session_state.data_loaded = False
-                        # Validate data before storing
-                        elif AQI_dic and AQI_live_dic and predictions_dic:
-                            st.session_state.aqi_data = AQI_dic
-                            st.session_state.aqi_live_data = AQI_live_dic
-                            st.session_state.predictions_data = predictions_dic
-                            st.session_state.data_loaded = True
-                            st.success("Forecast Ready!")
-                        else:
-                            st.error("Error Encountered ! Incomplete data, please try again.")
-                            st.session_state.data_loaded = False
-                    except Exception as e:
-                        st.error(f"Error Encountered ! {str(e)}")
-                        st.info("💡 Please try again or check if the location has available air quality data.")
-                        st.session_state.data_loaded = False
     elif submitted and address == st.session_state.last_address:
         # Address hasn't changed, use cached data
         if st.session_state.data_loaded:
@@ -564,6 +588,7 @@ with st.form("chatbot_form", clear_on_submit=True):
         elif st.session_state.location_info and st.session_state.aqi_live_data:
             # Increment chatbot count
             st.session_state.chatbot_count += 1
+            st.session_state.chatbot_timestamps.append(time.time())
             # Store input and set loading state
             st.session_state.chatbot_input = chat_input
             st.session_state.chatbot_loading = True
