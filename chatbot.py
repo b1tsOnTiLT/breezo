@@ -13,7 +13,7 @@ load_dotenv()
 GOOGLE_API = os.getenv('GOOGLE_API')
 OPEN_AI_API = os.getenv('OPEN_AI_API')
 
-
+client=OpenAI(api_key=OPEN_AI_API)
 
 def get_response(message, aqi_live_dic, location, conversation_history=None):
     
