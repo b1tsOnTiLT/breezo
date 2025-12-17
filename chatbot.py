@@ -6,12 +6,10 @@ import pandas as pd
 from prompts import SYSTEM_PROMPT, CONTEXT_PROMPT
 from dotenv import load_dotenv
 import os
+import streamlit as st
 
-
-load_dotenv()
-
-GOOGLE_API = os.getenv('GOOGLE_API')
-OPEN_AI_API = os.getenv('OPEN_AI_API')
+GOOGLE_API = st.secrets["api"]["google"]
+OPEN_AI_API = st.secrets["api"]["open_ai"]
 
 client=OpenAI(api_key=OPEN_AI_API)
 
