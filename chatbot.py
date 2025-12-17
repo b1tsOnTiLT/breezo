@@ -7,6 +7,7 @@ from prompts import SYSTEM_PROMPT, CONTEXT_PROMPT
 from dotenv import load_dotenv
 import os
 import streamlit as st
+import pytz
 
 GOOGLE_API = st.secrets["google"]["api_key"]
 OPEN_AI_API = st.secrets["open_ai"]["api_key"]
@@ -89,9 +90,14 @@ def get_response(message, aqi_live_dic, location, conversation_history=None):
 
 
 
+def get_indian_time():
+    """Get current time in Indian Standard Time (IST)"""
+    ist = pytz.timezone('Asia/Kolkata')
+    return datetime.datetime.now(ist)
+
 def create_windows(aqi_live_dic):
     windows={}
-    curr_hour=datetime.datetime.now().hour
+    curr_hour=get_indian_time().hour
     for i in range(1,8):
         h=curr_hour+i
         window_bench=[aqi_live_dic[k] for k in range(i-1, i+2)]  # List of values for h-1, h, h+1
@@ -224,8 +230,8 @@ def build_aqi_runtime_payload(windows,location):
             "confidence": windows[best_idx]["window_confidence"],
             "hours": windows[best_idx]['window_hours']
         },
-        "current_datetime": pd.to_datetime(datetime.datetime.now()).round('h'),
-        "current_hour": datetime.datetime.now().hour,
+        "current_datetime": pd.to_datetime(get_indian_time()).round('h'),
+        "current_hour": get_indian_time().hour,
         "location" : location
     }
 
