@@ -1,13 +1,13 @@
 
 from openai import OpenAI
 import numpy as np
-import datetime
+from datetime import datetime
 import pandas as pd
 from prompts import SYSTEM_PROMPT, CONTEXT_PROMPT
 from dotenv import load_dotenv
 import os
 import streamlit as st
-import pytz
+
 
 GOOGLE_API = st.secrets["google"]["api_key"]
 OPEN_AI_API = st.secrets["open_ai"]["api_key"]
@@ -227,8 +227,8 @@ def build_aqi_runtime_payload(windows,location):
             "confidence": windows[best_idx]["window_confidence"],
             "hours": windows[best_idx]['window_hours']
         },
-        "current_datetime": pd.to_datetime(get_indian_time()).round('h'),
-        "current_hour": get_indian_time().hour,
+        "current_datetime": (pd.to_datetime(datetime.now())+pd.Timedelta(hours=5.5)).floor('h'),
+        "current_hour": (pd.to_datetime(datetime.now())+pd.Timedelta(hours=5.5)).floor('h').hour,
         "location" : location
     }
 
