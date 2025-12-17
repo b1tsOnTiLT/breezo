@@ -17,9 +17,8 @@ LAT_MAX = 28.90  # North: Covers Narela & North Delhi border
 LON_MIN = 76.80  # West: Covers Manesar & Dwarka Expressway
 LON_MAX = 77.70  # East: Covers Narela & North Delhi border
 
-load_dotenv()
-GOOGLE_API = os.getenv('GOOGLE_API')
-OPEN_AI_API = os.getenv('OPEN_AI_API')
+GOOGLE_API = st.secrets["api"]["google"]
+OPEN_AI_API =  st.secrets["api"]["open_ai"]
 
 def get_PM25_subindex(x):
     if x <= 30:
