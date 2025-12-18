@@ -13,7 +13,7 @@ So, I built Breezo.
 ##  What Breezo Does
 
 - Enter any Location within the Delhi-NCR triangle
-- Recieve a detailed Air quality appraisle for the next 8 hours, including AQI_IN, AQ (Live) , PM2.5 and PM10
+- Recieve a detailed Air quality appraisal for the next 8 hours, including AQI_IN, AQ (Live) , PM2.5 and PM10
 - Ask any follow up pertaining to the Air quality in this region to a chatbot.
 
 
