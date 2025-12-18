@@ -570,7 +570,7 @@ if st.session_state.aqi_data and st.session_state.predictions_data:
                 borderwidth=1
             ),
             height=500,
-            margin=dict(l=60, r=120, t=60, b=60)
+            margin=dict(l=60, r=60, t=60, b=60)
         )
         
         st.plotly_chart(fig, width='stretch')
