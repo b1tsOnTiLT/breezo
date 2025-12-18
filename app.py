@@ -178,7 +178,7 @@ def get_img_as_base64(file_path):
 
 
 # Streamlit App
-st.set_page_config(page_title="Air Quality Index Dashboard", layout="wide")
+st.set_page_config(page_title="Breezo", layout="wide")
 
 # Load Breezo logo as base64 for reliable inline rendering
 try:
