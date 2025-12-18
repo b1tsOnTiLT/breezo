@@ -182,9 +182,9 @@ st.markdown("""
             font-family: 'Source Serif Pro', serif !important;
         }
         
-        /* Blue-black background */
+        /* Deep blue gradient background to match Breezo branding */
         .stApp {
-            background: linear-gradient(135deg, #1a237e 0%, #0d47a1 50%, #000000 100%);
+            background: linear-gradient(135deg, #0b1f2f 0%, #0a3d5c 50%, #0a2033 100%);
         }
         
         /* Center heading */
@@ -282,9 +282,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Centered heading and punchline
-st.markdown("<h1 style='text-align: center; color: #ffffff; font-weight: 700;'>🌬️ AQI Dashboard</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #e3f2fd; font-size: 18px; margin-top: -10px;'>The next 8 Hours in Your hand</p>", unsafe_allow_html=True)
+# Centered Breezo logo header
+st.markdown(
+    "<div style='display:flex; justify-content:center; margin-top:4px; margin-bottom:12px;'>"
+    "<img src='breezologo.png' alt='Breezo' style='max-width:360px; width:90%; height:auto;'>"
+    "</div>",
+    unsafe_allow_html=True
+)
 st.markdown("<br>", unsafe_allow_html=True)
 
 # Initialize session state
@@ -421,7 +425,7 @@ if st.session_state.aqi_data and st.session_state.predictions_data:
         st.markdown("<br>", unsafe_allow_html=True)
         plot_pm25 = st.checkbox("PM2.5", value=True, key="pm25_check")
         plot_pm10 = st.checkbox("PM10", value=True, key="pm10_check")
-        plot_aqi = st.checkbox("AQI", value=True, key="aqi_check")
+        plot_aqi = st.checkbox("AQI_IN", value=True, key="aqi_check")
         plot_aqi_live = st.checkbox("AQI (Live)", value=True, key="aqi_live_check")
     
     with col_graph:
@@ -462,10 +466,10 @@ if st.session_state.aqi_data and st.session_state.predictions_data:
                 x=time_labels,
                 y=aqi_values,
                 mode='lines+markers',
-                name='AQI',
+                name='AQI_IN',
                 line=dict(color='#FFE66D', width=2.5, shape='linear'),
                 marker=dict(size=6, color='#FFE66D', line=dict(width=1, color='#FFFFFF')),
-                hovertemplate='<br>AQI: %{y:.1f}<extra></extra>'
+                hovertemplate='<br>AQI_IN: %{y:.1f}<extra></extra>'
             ))
         
         if plot_aqi_live:
