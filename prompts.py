@@ -123,6 +123,7 @@ CONTEXT_PROMPT=f"""
     3. Context: Briefly mention temperature/seasonality if relevant.
     4. Be concise (2-4 sentences).
     5. Use plain, non-technical language.
+    6. Always provide context with respect to other windows if you are explicity recommending a specific window, this "comparision" should be provided either from the adjacent window, or with the mean value, both of which will be proivided to you.
     
     </Response Structure>
 
