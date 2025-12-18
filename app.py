@@ -574,7 +574,7 @@ if st.session_state.aqi_data and st.session_state.predictions_data:
             margin=dict(l=20, r=10, t=80, b=40)
         )
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
 # Initialize chatbot response in session state
 if 'chatbot_response' not in st.session_state:
