@@ -294,6 +294,14 @@ st.markdown("""
             margin: 0 !important;
             opacity: 0 !important;
         }
+
+        /* Hide Plotly legend on small screens to keep the chart uncluttered */
+        @media (max-width: 768px) {
+            .js-plotly-plot .legend,
+            .js-plotly-plot .g-legend {
+                display: none !important;
+            }
+        }
     </style>
 """, unsafe_allow_html=True)
 
