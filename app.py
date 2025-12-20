@@ -208,6 +208,16 @@ st.markdown("""
             color: #ffffff;
             font-weight: 700;
         }
+
+        /* Ensure section headings stay white across embeds/overrides */
+        h2, h3, h4, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4 {
+            color: #ffffff !important;
+        }
+
+        /* Keep checkbox/radio labels (pollutant selectors) readable on dark bg */
+        .stCheckbox label, .stRadio label, .stCheckbox span, .stRadio span {
+            color: #ffffff !important;
+        }
         
         /* Rounded boxes for chatbot */
         .chat-main-container {
